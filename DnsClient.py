@@ -1,4 +1,5 @@
 import sys
+import socket
 
 flags = ["-t", "-r", "-p", "-mx", "-ns"]
 flags_values_dict = {"-t": 5,
@@ -33,25 +34,35 @@ for i in range(0, len(sys.argv)):
             domain_name = sys.argv[i]
 
 
-
 # DNS Questions Preparation
-if flags_values_dict["-mx"]: qType = "0x000f"
-elif flags_values_dict["-ns"]: qType = "0x0002"
-else: qType = "0x0001"
+if flags_values_dict["-mx"]: q_type = "0x000f"
+elif flags_values_dict["-ns"]: q_type = "0x0002"
+else: q_type = "0x0001"
 
-qClass = "0x0001"
-qName = ""
+q_class = "0x0001"
+q_name = ""
 
 domain_name_sliced = domain_name.split(".")
 for slice in domain_name_sliced:
     slice_length = str(len(slice))
-    # print(hex(slice_length))
-    # print(slice.encode().hex())
-    qName += slice_length + slice
+    q_name += slice_length + slice
+
+q_name += "0"
+
+q_name_as_bytes = str.encode(q_name)
+
+print(q_name_as_bytes)
 
 
-print(qName)
-print(qName.encode("utf-8").hex())
-# print(bytes.fromhex(qName))
+# UDP Client 
+server_Port = flags_values_dict["-p"]
 
+client_msg = "Harsh is gay"
+send_msg = str.encode(client_msg)
+server_Address_Port = (server_IP_address, server_Port)
+
+udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+
+# Send to server 
+udp_carl.sendto(send_msg, server_Address_Port)
 
