@@ -1,5 +1,6 @@
 import sys
 import socket
+import random
 
 flags = ["-t", "-r", "-p", "-mx", "-ns"]
 flags_values_dict = {"-t": 5,
@@ -52,6 +53,55 @@ q_name += "0"
 q_name_as_bytes = str.encode(q_name)
 
 print(q_name_as_bytes)
+
+
+
+
+#Header
+
+
+##Should fromat this a different way maybe hardcode most of the already know bits into all in one
+## for example if theyr are consecutive known stuff we put them all in one variable
+
+##Random 16-bit number 
+##NOT SURE IF getrandbits ACTUALLY DOES WHAT I EXEPECT
+id = '' + random.getrandbits(16)
+
+
+##All of this is 16 bit could put it all together now
+QR = '0'
+OPcode='0000'
+AA='0'
+TC='0'
+RD='1'
+RA='0'
+Z ='000'
+RCODE='0000'
+
+##Cumulation of everything above except ID
+AllBITCODES = "0000000100000000"
+
+
+##Each of these are 16 bit
+QDCOUNT='0000000000000001' ##should be 1
+ANCOUNT='0000000000000000' ##values dependent on answer
+NSCOUNT='0000000000000000' ##values dependent on answer however program can ignore response entries in this section
+ARCOUNT='0000000000000000' ##values dependent on answer
+
+
+##Constucxt QNAME Size|Label|Size|Label 
+##DO NOT FORGET TERMINATING 0 BYTE. 
+
+
+
+
+
+
+
+##Append full message
+
+
+
 
 
 # UDP Client 
