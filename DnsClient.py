@@ -30,17 +30,17 @@ for i in range(0, len(sys.argv)):
 
     else:
         if "@" in sys.argv[i]:
-            server_IP_address = sys.argv[i]
+            server_IP_address = sys.argv[i].strip("@")
         else:
             domain_name = sys.argv[i]
 
 
 # DNS Questions Preparation
-if flags_values_dict["-mx"]: q_type = "0x000f"
-elif flags_values_dict["-ns"]: q_type = "0x0002"
-else: q_type = "0x0001"
+if flags_values_dict["-mx"]: q_type = "000f"
+elif flags_values_dict["-ns"]: q_type = "0002"
+else: q_type = "0001"
 
-q_class = "0x0001"
+q_class = "0001"
 q_name = ""
 
 domain_name_sliced = domain_name.split(".")
@@ -48,71 +48,58 @@ for slice in domain_name_sliced:
     slice_length = str(len(slice))
     q_name += slice_length + slice
 
-q_name += "0"
 
-q_name_as_bytes = str.encode(q_name)
+# print("QName, QType, QClass", q_name, q_type, q_class)
+# print("name after hex", q_name.encode("utf-8").hex())
+q_name = q_name.encode("utf-8").hex() + "0"
 
-print(q_name_as_bytes)
-
-
-
+# DNS Questions parsed
+dns_question = q_name + q_type + q_class
+# print("Question", dns_question)
 
 #Header
+dns_header = ""
 
+id = str(random.getrandbits(16))
+qr = '0'
+opcode= '0000'
+aa = '0'
+tc = '0'
+rd = '1'
+ra = '0'
+z = '000'
+rcode = '0000'
 
-##Should fromat this a different way maybe hardcode most of the already know bits into all in one
-## for example if theyr are consecutive known stuff we put them all in one variable
-
-##Random 16-bit number 
-##NOT SURE IF getrandbits ACTUALLY DOES WHAT I EXEPECT
-id = '' + random.getrandbits(16)
-
-
-##All of this is 16 bit could put it all together now
-QR = '0'
-OPcode='0000'
-AA='0'
-TC='0'
-RD='1'
-RA='0'
-Z ='000'
-RCODE='0000'
-
-##Cumulation of everything above except ID
-AllBITCODES = "0000000100000000"
-
+# Cumulation of flags
+flags = qr + opcode + aa + tc + rd + ra + z + rcode
 
 ##Each of these are 16 bit
-QDCOUNT='0000000000000001' ##should be 1
-ANCOUNT='0000000000000000' ##values dependent on answer
-NSCOUNT='0000000000000000' ##values dependent on answer however program can ignore response entries in this section
-ARCOUNT='0000000000000000' ##values dependent on answer
+qdcount = '0001' ##should be 1
+ancount = '0000' ##values dependent on answer
+nscount = '0000' ##values dependent on answer however program can ignore response entries in this section
+arcount = '0000' ##values dependent on answer
+
+dns_header = id + flags + qdcount + ancount + nscount + arcount
+# print("Header", dns_header)
+
+# DNS Packet (header + question)
+dns_packet =  dns_header + dns_question
+# print("DNS Packet in HEX", dns_packet)
+dns_packet_bytes = bytes.fromhex(dns_packet)
+# print("DNS Packet in BYTES", dns_packet_bytes)
 
 
-##Constucxt QNAME Size|Label|Size|Label 
-##DO NOT FORGET TERMINATING 0 BYTE. 
-
-
-
-
-
-
-
-##Append full message
-
-
-
-
-
-# UDP Client 
+# # UDP Client 
 server_Port = flags_values_dict["-p"]
-
-client_msg = "Harsh is gay"
-send_msg = str.encode(client_msg)
-server_Address_Port = (server_IP_address, server_Port)
+bytes_to_send = dns_packet_bytes
+server_Address_Port = (server_IP_address,server_Port)
+print(server_Address_Port)
 
 udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+bufferSize = 1024
 
-# Send to server 
-udp_carl.sendto(send_msg, server_Address_Port)
-
+# Send to server using created UDP socket
+udp_carl.sendto(bytes_to_send, server_Address_Port)
+msgFromServer = udp_carl.recvfrom(bufferSize)
+msg = "Message from Server {}".format(msgFromServer[0])
+print(msg)
