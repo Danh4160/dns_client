@@ -66,7 +66,7 @@ print("Question", dns_question)
 #Header
 dns_header = ""
 
-id = str(random.getrandbits(15))
+id = str(random.getrandbits(16))
 flags = '0100'
 # qr = '0'
 # opcode= '0000'
@@ -110,5 +110,7 @@ bufferSize = 1024
 udp_carl.sendto(bytes_to_send, server_Address_Port)
 msgFromServer = udp_carl.recvfrom(bufferSize)
 # print(msgFromServer[0])
-msg = "Message from Server {}".format(msgFromServer[0])
+#msg = "Message from Server {}".format(msgFromServer[0])
+msg= (msgFromServer[0])
 print(msg)
+print(msg.hex())
