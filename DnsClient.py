@@ -2,6 +2,7 @@ import sys
 import socket
 import random
 import re
+import time
 
 switches = ["-t", "-r", "-p", "-mx", "-ns"]
 switches_values_dict = {"-t": 5,
@@ -93,9 +94,12 @@ server_Address_Port = (server_IP_address,server_Port)
 udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 bufferSize = 1024
 
-## Send to server using created UDP socket
+## Send to server using created UDP 
+start = time.time()
 udp_carl.sendto(bytes_to_send, server_Address_Port)
 msgFromServer = udp_carl.recvfrom(bufferSize)
+end = time.time()
+
 msg = msgFromServer[0]
 msg_hex = msg.hex()
 msg_bin = format(int(msg_hex, 16), '0>42b')
@@ -131,7 +135,7 @@ header_response_flags_dict["QDCOUNT"] = header_response_rows[2]
 header_response_flags_dict["ANCOUNT"] = header_response_rows[3]
 header_response_flags_dict["NSCOUNT"] = header_response_rows[4]
 header_response_flags_dict["ARCOUNT"] = header_response_rows[5]
-print("flags values", header_response_flags_dict)
+##print("flags values", header_response_flags_dict)
 
 ## Sectioning of the server message for the answer section only
 answer_hex = msg_hex[len(dns_packet):]
@@ -144,11 +148,11 @@ print(answer_bin_rows)
 
 if answer_bin_rows[0][:2] == '11':
     index = int(answer_bin_rows[0][2:], 2) * 2
-    print(index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
+  ##  print(index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
     # Retrieve the domain name of response
     r_name_hex = msg_hex[index:][:len(q_name)]
     r_name_hex_list = re.findall('..', r_name_hex)
-    print(r_name_hex_list)
+##    print(r_name_hex_list)
     segment_hex = ""
     r_name = ""
     i = 0
@@ -157,17 +161,60 @@ if answer_bin_rows[0][:2] == '11':
             break
         check = int(_, 16)
         if  not chr(check).isalpha() and not chr(check).isdigit():
-            print(f"start index: {i+1} end index: {i+1+check}")
-            print(r_name_hex_list[i+1:i+1+check])
+##            print(f"start index: {i+1} end index: {i+1+check}")
+##            print(r_name_hex_list[i+1:i+1+check])
             segment_hex = "".join(r_name_hex_list[i+1:i+1+check])
             segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
             r_name += segment_str
-            print("segment hex", segment_hex) 
-            print("segment str", segment_str) 
+##            print("segment hex", segment_hex) 
+  ##          print("segment str", segment_str) 
             i += 1 + check
             
     r_name = r_name[:-1]
     print(r_name)
+
+print("DnsClient sending request for", domain_name)
+
+print("Server",server_IP_address)
+
+if    q_type== "000f":
+    print("Request Type","MX")
+
+elif  q_type == "0002":
+    print("Request Type","NS")
+
+else: ##or q_type == "0001"
+    print("Request Type", "A")
+
+
+print(f"Response received after {end - start} seconds [num_retries] not coded yet]")
+
+
+
+##Get number of additional asnwer records
+print(f"***Answer Section ({int(header_response_rows[3],2)} record(s))***")
+
+##Type of response going to need a way to get the others too
+TYPE_response = ''
+if answer_bin_rows[1] == '0000000000000001':
+    TYPE_response = 'A'
+elif answer_bin_rows[1] == '0000000000000010':
+    TYPE_response = 'NS'
+elif answer_bin_rows[1] == '0000000000001111':
+    TYPE_response = 'MX'
+else: #if this doesnt work the conversion is 0000000000000101 in binary
+    TYPE_response = 'CNAME'
+
+##BAD CLASS ERROR
+if answer_bin_rows[2] != '0000000000000001':
+    print("ERROR\tUnexpected : was expecting response clas to be of type IN (internet), which is 0000000000000001 but got",answer_bin_rows[2])
+
+
+globaindex=0 #in case of many records in aswers and having to go back each time.
+##gonna need to use rlenght to understand how many rows we take for rdata
+
+
+
 
 
 
