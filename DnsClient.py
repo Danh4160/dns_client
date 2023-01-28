@@ -148,6 +148,60 @@ print(answer_bin_rows)
 
 
 
+# compression = False
+# read_compression_bits_done = False
+# compression_counter = 0
+# offset_bin = ""
+# for bit in answer_bin:
+
+#     if compression and not read_compression_bits_done:
+#         offset_bin += bit
+    
+#     if bit == '1' and not compression:
+#         compression_counter += 1
+#         break
+    
+#     if compression_counter == 2 and  not compression:
+#         # There is compression to do
+#         compression_counter = 0
+#         compression = True
+
+#     if compression and read_compression_bits_done:
+
+
+
+def retrieve_name(l, idx, r_name):
+    print(f"l: {l} idx: {idx} r_name: {r_name}")
+    while idx < len(l):
+        element = l[idx]
+        if element == '00':
+            print("breaking")
+            print("r_name", r_name)
+            return r_name
+        elif element[:1] == 'c':
+            index = element + l[idx + 1]
+            index_bin = format(int(index, 16), '0>16b')
+            index = int(index_bin[2:], 2) * 2
+            print("index", index)
+            return retrieve_name(re.findall("..", msg_hex[index:]), 0, r_name)
+
+        else:
+            check = int(element, 16)
+            if check < 32:
+                print("check", check)
+                print(f"start index: {idx+1} end index: {idx+1+check}")
+                print(r_name_hex_list[idx+1:idx+1+check])
+                segment_hex = "".join(l[idx+1:idx+1+check])
+                segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
+                r_name += segment_str
+                print("r_name in check", r_name)
+                print("segment hex", segment_hex) 
+                print("segment str", segment_str) 
+                idx += 1 + check
+      
+    return r_name
+
+r_name_list = []
 j = 0
 while j < len(answer_bin_rows):
     print("J",j)
@@ -158,35 +212,64 @@ while j < len(answer_bin_rows):
         # Retrieve the domain name of response
         r_name_hex = msg_hex[index:]#[:len(q_name)]
         r_name_hex_list = re.findall('..', r_name_hex)
-        print(r_name_hex_list)
+        print("r_name_hex_list", r_name_hex_list)
         segment_hex = ""
         r_name = ""
+        
         i = 0
-        for _ in r_name_hex_list:
-            if _ == '00':
-                break
-            check = int(_, 16)
-            if  not chr(check).isalpha() and not chr(check).isdigit():
-                # print(f"start index: {i+1} end index: {i+1+check}")
-                # print(r_name_hex_list[i+1:i+1+check])
-                segment_hex = "".join(r_name_hex_list[i+1:i+1+check])
-                segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
-                r_name += segment_str
-                # print("segment hex", segment_hex) 
-                # print("segment str", segment_str) 
-                i += 1 + check
-                
-        r_name = r_name[:-1]
-        print(r_name)
+        r_name_list.append(retrieve_name(r_name_hex_list, i, r_name))
 
-    # print("j", j)
+
+        # while i < len(r_name_hex_list):
+        # # for i in range(len(r_name_hex_list)):
+        #     print("i", i)
+        #     element = r_name_hex_list[i]
+        #     print("current element", element)
+        #     if element[:1] == "c":
+        #         index = element + r_name_hex_list[i + 1]
+        #         print("index", index)
+        #         print("in c")
+        #         index_bin = format(int(index, 16), '0>16b')
+        #         print("index_bin", index_bin)
+        #         index = int(index_bin[2:], 2) * 2
+        #         print("index value", index)
+        #         i = index
+
+        #     elif element == '00':
+        #         print("in 00")
+        #         break
+        #     else:
+        #         check = int(element, 16)
+        #         if check < 32:
+        #         # if not chr(check).isalpha() and not chr(check).isdigit():
+        #             print("in if")
+        #             # if el[:1] == 'c': # pointer
+        #             #     # index = int(answer_bin_rows[j][2:], 2) * 2
+        #             #     print("index when sequence of label ends with pointer", index)
+
+        #             print("check", check)
+        #             print(f"start index: {i+1} end index: {i+1+check}")
+        #             print(r_name_hex_list[i+1:i+1+check])
+        #             segment_hex = "".join(r_name_hex_list[i+1:i+1+check])
+        #             segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
+        #             r_name += segment_str
+        #             print("segment hex", segment_hex) 
+        #             print("segment str", segment_str) 
+        #             i += 1 + check
+                
+        # r_name = r_name[:-1]
+        # print(r_name)
+
+    print("j", j)
+    print(answer_bin_rows)
     typee = answer_bin_rows[j + 1] # in string bit
     classe = answer_bin_rows[j + 2] # in string bit
     ttl = answer_bin_rows[j + 3] + answer_bin_rows[j + 4] # in string bit
     rdlength = answer_bin_rows[j + 5] # in string bit
+    print("length of rdlength", len(rdlength))
     rdata_offset = 96 # in bits
 
-    # print(f"type '{typee}' \nclass '{classe}' \nttl '{ttl}' \nrdlength '{rdlength}'")
+    print(f"type '{typee}' \nclass '{classe}' \nttl '{ttl}' \nrdlength '{rdlength}'")
 
     r_type = hex(int(typee, 2))
     r_classe = hex(int(classe, 2))
@@ -194,7 +277,7 @@ while j < len(answer_bin_rows):
     r_rdlength = hex(int(rdlength, 2))
 
     rdlength_bin_size = int(rdlength, 2) * 8 #The number of bits that RData takes
-
+    print("rdlength_bin_size", rdlength_bin_size)
     # Depends on type value
     type_value = r_type.lstrip("0x").zfill(4)
     print("type_value", type_value)
@@ -223,10 +306,11 @@ while j < len(answer_bin_rows):
         pass
     elif type_value == "000f":  # Type MX
         pass
-
-    j +=round((rdata_offset + rdlength_bin_size) / 16)  # update to get the index of the next record in the answer_bin_rows
-
-
+    
+    print(f"{rdata_offset} + {rdlength_bin_size}, {j}")
+    j += round((rdata_offset + rdlength_bin_size) / 16)  # update to get the index of the next record in the answer_bin_rows
+    print("updated J", j)
+print(r_name_list)
 
 
 
