@@ -150,15 +150,15 @@ print(answer_bin_rows)
 
 j = 0
 while j < len(answer_bin_rows):
-    print(j)
+    print("J",j)
     # Retrieve domain main of a record
     if answer_bin_rows[j][:2] == '11':
-        index = int(answer_bin_rows[0][2:], 2) * 2
-        # print(index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
+        index = int(answer_bin_rows[j][2:], 2) * 2
+        print("DAN INDEX",index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
         # Retrieve the domain name of response
-        r_name_hex = msg_hex[index:][:len(q_name)]
+        r_name_hex = msg_hex[index:]#[:len(q_name)]
         r_name_hex_list = re.findall('..', r_name_hex)
-        # print(r_name_hex_list)
+        print(r_name_hex_list)
         segment_hex = ""
         r_name = ""
         i = 0
@@ -214,6 +214,9 @@ while j < len(answer_bin_rows):
 
         print("ip address", ip_address)
 
+        print("ttl perhaps",int(r_ttl,16))
+        print(f"IP\t {ip_address}\t caches sec {int(r_ttl,16)} auth\t{flags_values[2]}")
+
     elif type_value == "0002":  # Type NS
         pass
     elif type_value == "0005":  # Type CNAME
@@ -221,7 +224,7 @@ while j < len(answer_bin_rows):
     elif type_value == "000f":  # Type MX
         pass
 
-    j += (rdata_offset + rdlength_bin_size) / 16  # update to get the index of the next record in the answer_bin_rows
+    j +=round((rdata_offset + rdlength_bin_size) / 16)  # update to get the index of the next record in the answer_bin_rows
 
 
 
@@ -273,7 +276,9 @@ print(f"Response received after {end - start} seconds [num_retries] not coded ye
 
 
 ##Get number of additional asnwer records
-print(f"***Answer Section ({int(header_response_rows[3],2)} record(s))***")
+#print(f"***Answer Section ({int(header_response_flags_dict["ANCOUNT"],16)} record(s))***")
+numanswers= int(header_response_flags_dict.get("ANCOUNT"),16)
+print(f"***Answer Section ({numanswers}) record(s)***") 
 
 ##Type of response going to need a way to get the others too
 TYPE_response = ''
