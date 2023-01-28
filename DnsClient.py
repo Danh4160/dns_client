@@ -135,7 +135,7 @@ header_response_flags_dict["QDCOUNT"] = header_response_rows[2]
 header_response_flags_dict["ANCOUNT"] = header_response_rows[3]
 header_response_flags_dict["NSCOUNT"] = header_response_rows[4]
 header_response_flags_dict["ARCOUNT"] = header_response_rows[5]
-##print("flags values", header_response_flags_dict)
+print("flags values", header_response_flags_dict)
 
 ## Sectioning of the server message for the answer section only
 answer_hex = msg_hex[len(dns_packet):]
@@ -148,10 +148,9 @@ print(answer_bin_rows)
 
 
 
-
-
-for j in range(len(answer_bin_rows)):
-
+j = 0
+while j < len(answer_bin_rows):
+    print(j)
     # Retrieve domain main of a record
     if answer_bin_rows[j][:2] == '11':
         index = int(answer_bin_rows[0][2:], 2) * 2
@@ -179,21 +178,50 @@ for j in range(len(answer_bin_rows)):
                 
         r_name = r_name[:-1]
         print(r_name)
-    
-    type = answer_bin_rows[i + 1]
-    classe = answer_bin_rows[i + 2]
-    ttl = answer_bin_rows[i + 3] + answer_bin_rows[i + 4]
-    rdlength = answer_bin_rows[i + 5]
+
+    # print("j", j)
+    typee = answer_bin_rows[j + 1] # in string bit
+    classe = answer_bin_rows[j + 2] # in string bit
+    ttl = answer_bin_rows[j + 3] + answer_bin_rows[j + 4] # in string bit
+    rdlength = answer_bin_rows[j + 5] # in string bit
     rdata_offset = 96 # in bits
 
-    r_type = hex(int(type, 2))
+    # print(f"type '{typee}' \nclass '{classe}' \nttl '{ttl}' \nrdlength '{rdlength}'")
+
+    r_type = hex(int(typee, 2))
     r_classe = hex(int(classe, 2))
     r_ttl = hex(int(ttl, 2))
     r_rdlength = hex(int(rdlength, 2))
 
-    rdlength_bin_size = int(rdlength, '2') * 8 #The number of bits that RData takes
+    rdlength_bin_size = int(rdlength, 2) * 8 #The number of bits that RData takes
 
-    for bit in range(len(rdlength_bin_size)):
+    # Depends on type value
+    type_value = r_type.lstrip("0x").zfill(4)
+    print("type_value", type_value)
+    r_data = ""
+    if type_value == "0001":  # Type A
+        # IP address represented using 4 octets = 32 bits
+        next_record_idx = (rdata_offset + rdlength_bin_size) / 16
+        next_record_idx = round(next_record_idx)
+        # print("next_record_idx", next_record_idx)
+        ip_bin = answer_bin_rows[next_record_idx - 2] + answer_bin_rows[next_record_idx - 1]
+        ip_octet_list = re.findall('.'*8, ip_bin)
+        ip_list = []
+        print("ip_octet_list", ip_octet_list)
+        for byte in ip_octet_list:  
+            ip_list.append(str(int(byte, 2)))
+            ip_address = '.'.join(ip_list)
+
+        print("ip address", ip_address)
+
+    elif type_value == "0002":  # Type NS
+        pass
+    elif type_value == "0005":  # Type CNAME
+        pass
+    elif type_value == "000f":  # Type MX
+        pass
+
+    j += (rdata_offset + rdlength_bin_size) / 16  # update to get the index of the next record in the answer_bin_rows
 
 
 
