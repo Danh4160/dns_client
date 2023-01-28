@@ -146,32 +146,76 @@ print("Server Answer in Binary", answer_bin)
 answer_bin_rows = re.findall('.'*16, answer_bin)
 print(answer_bin_rows)
 
-if answer_bin_rows[0][:2] == '11':
-    index = int(answer_bin_rows[0][2:], 2) * 2
-  ##  print(index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
-    # Retrieve the domain name of response
-    r_name_hex = msg_hex[index:][:len(q_name)]
-    r_name_hex_list = re.findall('..', r_name_hex)
-##    print(r_name_hex_list)
-    segment_hex = ""
-    r_name = ""
-    i = 0
-    for _ in r_name_hex_list:
-        if _ == '00':
-            break
-        check = int(_, 16)
-        if  not chr(check).isalpha() and not chr(check).isdigit():
-##            print(f"start index: {i+1} end index: {i+1+check}")
-##            print(r_name_hex_list[i+1:i+1+check])
-            segment_hex = "".join(r_name_hex_list[i+1:i+1+check])
-            segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
-            r_name += segment_str
-##            print("segment hex", segment_hex) 
-  ##          print("segment str", segment_str) 
-            i += 1 + check
-            
-    r_name = r_name[:-1]
-    print(r_name)
+
+
+
+
+for j in range(len(answer_bin_rows)):
+
+    # Retrieve domain main of a record
+    if answer_bin_rows[j][:2] == '11':
+        index = int(answer_bin_rows[0][2:], 2) * 2
+        # print(index) # this number is which ith row to check for the name. This is an octet, for hex we * 2.
+        # Retrieve the domain name of response
+        r_name_hex = msg_hex[index:][:len(q_name)]
+        r_name_hex_list = re.findall('..', r_name_hex)
+        # print(r_name_hex_list)
+        segment_hex = ""
+        r_name = ""
+        i = 0
+        for _ in r_name_hex_list:
+            if _ == '00':
+                break
+            check = int(_, 16)
+            if  not chr(check).isalpha() and not chr(check).isdigit():
+                # print(f"start index: {i+1} end index: {i+1+check}")
+                # print(r_name_hex_list[i+1:i+1+check])
+                segment_hex = "".join(r_name_hex_list[i+1:i+1+check])
+                segment_str = bytearray.fromhex(segment_hex).decode(encoding="ASCII") + "."
+                r_name += segment_str
+                # print("segment hex", segment_hex) 
+                # print("segment str", segment_str) 
+                i += 1 + check
+                
+        r_name = r_name[:-1]
+        print(r_name)
+    
+    type = answer_bin_rows[i + 1]
+    classe = answer_bin_rows[i + 2]
+    ttl = answer_bin_rows[i + 3] + answer_bin_rows[i + 4]
+    rdlength = answer_bin_rows[i + 5]
+    rdata_offset = 96 # in bits
+
+    r_type = hex(int(type, 2))
+    r_classe = hex(int(classe, 2))
+    r_ttl = hex(int(ttl, 2))
+    r_rdlength = hex(int(rdlength, 2))
+
+    rdlength_bin_size = int(rdlength, '2') * 8 #The number of bits that RData takes
+
+    for bit in range(len(rdlength_bin_size)):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 print("DnsClient sending request for", domain_name)
 
@@ -185,6 +229,15 @@ elif  q_type == "0002":
 
 else: ##or q_type == "0001"
     print("Request Type", "A")
+
+
+
+
+
+
+
+
+
 
 
 print(f"Response received after {end - start} seconds [num_retries] not coded yet]")
