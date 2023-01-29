@@ -88,7 +88,8 @@ def output_error_msg(error_index, description=None):
         "2": f"ERROR 2: Max retries exceeded ({description}).",
         "3": f"ERROR 3: Illegal Input ({description})",
         "4": f"ERROR 4: Invalid Input Syntax ({description})",
-        "5": f"ERROR 5: Missing Required Input ({description})"
+        "5": f"ERROR 5: Missing Required Input ({description})",
+        "6": f"ERROR 6: Unexpected Error ({description})"
     }
     error_msg = error_dict[error_index]
     return error_msg
@@ -201,7 +202,7 @@ try:
         int(switches_values_dict["-p"])
         int(switches_values_dict["-r"])
     except Exception:
-        raise ValueError(output_error_msg("3", "Wrong type"))
+        raise ValueError(output_error_msg("3", "Wrong type for -t -p or -r"))
 
 
     # DNS Questions Preparation
@@ -311,8 +312,9 @@ try:
             output_message()
             break
         except Exception as e:
-            print(str(e))
             retries += 1
+            raise ValueError(output_error_msg("6", str(e)))
+            
             
     if retries > int(switches_values_dict["-r"]): 
         raise output_error_msg("2", switches_values_dict["-r"])
