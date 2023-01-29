@@ -82,14 +82,16 @@ def parse_domain_name():
         record_dict = dict(zip(record_dict_keys, record_dict_values))
         records_dict[str(record_num)] = record_dict
 
-def output_error_msg(error_msg):
-
-    if error_msg == "TIMEOUT":
-        print("ERROR \t Timeout")
-    
-    elif error_msg == "RETRY":
-        print("ERROR \t Maximum number of retries")
-    return
+def output_error_msg(error_index, description=None):
+    error_dict = {
+        "1": "ERROR 1: Time exceeded.",
+        "2": f"ERROR 2: Max retries exceeded ({description}).",
+        "3": f"ERROR 3: Illegal Input ({description})",
+        "4": f"ERROR 4: Invalid Input Syntax ({description})",
+        "5": f"ERROR 5: Missing Required Input ({description})"
+    }
+    error_msg = error_dict[error_index]
+    return error_msg
 
 
 def output_records_info(section, num_of_records):
@@ -161,29 +163,45 @@ try:
                         "-ns": False,
                         }
     address_set = False
-    server_IP_address = "",
+    server_IP_address = ""
     domain_name = ""
 
-    for i in range(0, len(sys.argv)):
-
+    i = 1
+    while i < len(sys.argv):
         if sys.argv[i] in switches:
-
+            key = sys.argv[i]
             if (sys.argv[i] == "-mx" or sys.argv[i] == "-ns"):
                 if not address_set:
-                    switches_values_dict[sys.argv[i]] = True
+                    switches_values_dict[key] = True
                     address_set = True
-                continue
-            
-            i_temp = i + 1
-            key = sys.argv[i]
-            value = sys.argv[i_temp]
-            switches_values_dict[key] = value
-
+                else:
+                    raise ValueError(output_error_msg("3", "Cannot have -mx and -ns"))
+            else:
+                i_temp = i + 1
+                key = sys.argv[i]
+                value = sys.argv[i_temp]
+                switches_values_dict[key] = value
+                i = i + 1
         else:
             if "@" in sys.argv[i]:
-                server_IP_address = sys.argv[i].strip("@")
-            else:
-                domain_name = sys.argv[i]
+                server_IP_address = sys.argv[i].lstrip("@")
+                try:
+                    domain_name = sys.argv[i+1]
+                    i = i + 1
+                except Exception:
+                    raise ValueError(output_error_msg("5", "Domain Name"))
+            else: 
+                raise ValueError(output_error_msg("4", sys.argv[i]))
+        i = i + 1
+
+    # Checks
+    if server_IP_address == "": raise ValueError(output_error_msg("5", "IP Address"))
+    try:
+        int(switches_values_dict["-t"])
+        int(switches_values_dict["-p"])
+        int(switches_values_dict["-r"])
+    except Exception:
+        raise ValueError(output_error_msg("3", "Wrong type"))
 
 
     # DNS Questions Preparation
@@ -227,7 +245,7 @@ try:
     dns_packet_bytes = bytes.fromhex(dns_packet)
 
     # UDP Client 
-    server_Port = switches_values_dict["-p"]
+    server_Port = int(switches_values_dict["-p"])
     bytes_to_send = dns_packet_bytes
     server_Address_Port = (server_IP_address,server_Port)
     udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
@@ -235,15 +253,15 @@ try:
 
     ## Send to server using created UDP 
     retries = 0
-    while retries <= switches_values_dict["-r"]:
+    while retries <= int(switches_values_dict["-r"]):
         try:
             start = time.time()
             udp_carl.sendto(bytes_to_send, server_Address_Port)
             msgFromServer = udp_carl.recvfrom(bufferSize)
             end = time.time()
 
-            if (end - start) > switches_values_dict["-t"]:
-                raise TimeoutError
+            if (end - start) > int(switches_values_dict["-t"]):
+                raise output_error_msg("1", None)
             
             msg = msgFromServer[0]
             msg_hex = msg.hex()
@@ -292,13 +310,15 @@ try:
             parse_domain_name()
             output_message()
             break
-        except Exception:
+        except Exception as e:
+            print(str(e))
             retries += 1
             
-    if retries > switches_values_dict["-r"]: 
-        raise output_error_msg("RETRY")
-except Exception:
-    pass
+    if retries > int(switches_values_dict["-r"]): 
+        raise output_error_msg("2", switches_values_dict["-r"])
+except Exception as e:
+    print(e)
+    
     
 
 
