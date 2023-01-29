@@ -7,7 +7,6 @@ import time
 
 def retrieve_domain_name(l, index, name):
     while index < len(l):
-        # print(f"List used: {l}\nIndex used: {index}\nCurrent name: {name}")
         if l[index] == 0:
             return name
         elif l[index] == 192:
@@ -17,7 +16,6 @@ def retrieve_domain_name(l, index, name):
             if l[index] < 32:
                 segment_length = l[index]
                 segment = l[index + 1: index + 1 + segment_length]
-                # print("Segment", segment)
                 segment = [chr(byte) for byte in segment]
                 segment = "".join(segment) + "."
                 name += segment
@@ -32,43 +30,28 @@ def parse_domain_name():
     i = 0
 
     while i < len(answer_in_bytes):
-        # print(f"i: {i}\t Current byte: {answer_in_bytes[i]}")
         if answer_in_bytes[i] == 192:
             index = answer_in_bytes[i+1]
-            # print("Index passed", index)
             r_name = retrieve_domain_name(msg_bytes, index, "")[:-1]
             returned_r_names.append(r_name)
             record_num += 1
 
         # Read the type, class, ttl, rdlength, rdata
-        # print("answer", answer_in_bytes)
         r_type = answer_in_bytes[i + 2:i + 4]
         r_class = answer_in_bytes[i + 4:i + 6]
         r_ttl = answer_in_bytes[i + 6:i + 10]
         r_rdlength = answer_in_bytes[i + 10:i + 12]
         data_length = int.from_bytes(r_rdlength, 'big')
-        # print("data length", data_length)
         r_data = answer_in_bytes[i + 12: i + 12 + data_length]
 
-        # print(f"length type {len(r_type)}, length class {len(r_class)}, length ttl {len(r_ttl)}, length rdlength {len(r_rdlength)}, length data {len(r_data)}")
         # increment i to the next byte for the record
         i = i + len(r_type) + len(r_class) + len(r_ttl) + len(r_rdlength) + data_length + 2 
-        # print(f"next i index: {i}")
 
         section = ""
         if record_num <= int(header_response_flags_dict["ANCOUNT"], 16):
             section = "Answer"
         else:
             section = "Additional"
-
-        # print(f"Record {record_num}:")
-        # print("Type", r_type)
-        # print("Class", r_class)
-        # print("TTL", r_ttl)
-        # print("RDLength", r_rdlength)
-        # print("RData", r_data)
-        # print("RData", r_data)
-        # print("Section", section)
 
         if r_type.hex() == "0005" or r_type.hex() == "0002":
             r_data = retrieve_domain_name(r_data, 0, "")[:-1]
@@ -122,7 +105,6 @@ def output_records_info(section, num_of_records):
         elif record_type == "000f":  # Type MX
             pref = value["Data"][0]
             alias = value["Data"][1]
-            # MX <tab> [alias] <tab> [pref] <tab> [seconds can cache] <tab> [auth | nonauth]
             print(f"MX \t [{alias}] \t [{pref}] \t [{ttl}] \t [{auth}]")
 
 
@@ -250,6 +232,7 @@ try:
     bytes_to_send = dns_packet_bytes
     server_Address_Port = (server_IP_address,server_Port)
     udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+    udp_carl.settimeout(int(switches_values_dict["-t"]))
     bufferSize = 1024
 
     ## Send to server using created UDP 
@@ -258,22 +241,17 @@ try:
         try:
             start = time.time()
             udp_carl.sendto(bytes_to_send, server_Address_Port)
-            msgFromServer = udp_carl.recvfrom(bufferSize)
+            try:
+                msgFromServer = udp_carl.recvfrom(bufferSize)
+            except socket.timeout:
+                raise ValueError(output_error_msg("1"))
             end = time.time()
-
-            if (end - start) > int(switches_values_dict["-t"]):
-                raise output_error_msg("1", None)
-            
+ 
             msg = msgFromServer[0]
             msg_hex = msg.hex()
             msg_bin = format(int(msg_hex, 16), '0>16b')
-            # print(msg)
-            # print("Server Message", msg)
-            # print("Server Message in Binary", msg_bin)
-            # print("Server Message in Hex", msg_hex)
-
+            
             # Parsing the response packet
-
             # Initialising dict to keep track of header values for OUTPUT
             head_response_flags_keys = ["ID", "QR", "OPCODE", "AA", "TC", "RD", "RA", "Z", 
                                 "RCODE", "QDCOUNT", "ANCOUNT", "NSCOUNT", "ARCOUNT"]
@@ -283,7 +261,6 @@ try:
             ## Decoding the header response
             header_response_rows = re.findall('.'*4, msg_hex[:24])
             flags_values = bin(int(header_response_rows[1], 16)).lstrip("0b")
-            # print("header response rows", header_response_rows)
 
             header_response_flags_dict["ID"] = header_response_rows[0]
 
@@ -300,7 +277,6 @@ try:
             header_response_flags_dict["ANCOUNT"] = header_response_rows[3]
             header_response_flags_dict["NSCOUNT"] = header_response_rows[4]
             header_response_flags_dict["ARCOUNT"] = header_response_rows[5]
-            # print("Flags Values", header_response_flags_dict)
 
             msg_bytes = bytearray(msg)
             answer_in_bytes = msg_bytes[len(dns_packet_bytes):]
@@ -313,13 +289,12 @@ try:
             break
         except Exception as e:
             retries += 1
-            raise ValueError(output_error_msg("6", str(e)))
-            
-            
+
     if retries > int(switches_values_dict["-r"]): 
-        raise output_error_msg("2", switches_values_dict["-r"])
+        raise ValueError(output_error_msg("2", switches_values_dict["-r"]))
 except Exception as e:
     print(e)
+
     
     
 
