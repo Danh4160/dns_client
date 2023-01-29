@@ -23,7 +23,7 @@ def retrieve_domain_name(l, index, name):
     return name
 
 
-def parse_domain_name():
+def parse_records():
     r_name = ""
     returned_r_names = []
     record_num = 0
@@ -50,7 +50,7 @@ def parse_domain_name():
         section = ""
         if record_num <= int(header_response_flags_dict["ANCOUNT"], 16):
             section = "Answer"
-        else:
+        elif record_num > int(header_response_flags_dict["ANCOUNT"], 16) and record_num <= int(header_response_flags_dict["ANCOUNT"], 16) + int(header_response_flags_dict["ARCOUNT"], 16):
             section = "Additional"
 
         if r_type.hex() == "0005" or r_type.hex() == "0002":
@@ -64,6 +64,7 @@ def parse_domain_name():
         record_dict_values = [r_name, r_type, r_ttl, r_data, section]
         record_dict = dict(zip(record_dict_keys, record_dict_values))
         records_dict[str(record_num)] = record_dict
+
 
 def output_error_msg(error_index, description=None):
     error_dict = {
@@ -118,7 +119,7 @@ def output_message():
     elif q_type == "0002":
         print(request_type,"NS")
 
-    else: ##or q_type == "0001"
+    else: # q_type == "0001"
         print(request_type, "A")
 
     time = end - start
@@ -137,163 +138,167 @@ def output_message():
     
     if num_of_additionals + num_of_answers == 0: print("NOTFOUND")
 
-try:
-    switches = ["-t", "-r", "-p", "-mx", "-ns"]
-    switches_values_dict = {"-t": 5,
-                        "-r": 3,
-                        "-p": 53,
-                        "-mx": False,
-                        "-ns": False,
-                        }
-    address_set = False
-    server_IP_address = ""
-    domain_name = ""
 
-    i = 1
-    while i < len(sys.argv):
-        if sys.argv[i] in switches:
-            key = sys.argv[i]
-            if (sys.argv[i] == "-mx" or sys.argv[i] == "-ns"):
-                if not address_set:
-                    switches_values_dict[key] = True
-                    address_set = True
-                else:
-                    raise ValueError(output_error_msg("3", "Cannot have -mx and -ns"))
-            else:
-                i_temp = i + 1
-                key = sys.argv[i]
-                value = sys.argv[i_temp]
-                switches_values_dict[key] = value
-                i = i + 1
-        else:
-            if "@" in sys.argv[i]:
-                server_IP_address = sys.argv[i].lstrip("@")
-                try:
-                    domain_name = sys.argv[i+1]
-                    i = i + 1
-                except Exception:
-                    raise ValueError(output_error_msg("5", "Domain Name"))
-            else: 
-                raise ValueError(output_error_msg("4", sys.argv[i]))
-        i = i + 1
-
-    # Checks
-    if server_IP_address == "": raise ValueError(output_error_msg("5", "IP Address"))
+if __name__ == "__main__":
     try:
-        int(switches_values_dict["-t"])
-        int(switches_values_dict["-p"])
-        int(switches_values_dict["-r"])
-    except Exception:
-        raise ValueError(output_error_msg("3", "Wrong type for -t -p or -r"))
+        switches = ["-t", "-r", "-p", "-mx", "-ns"]
+        switches_values_dict = {"-t": 5,
+                            "-r": 3,
+                            "-p": 53,
+                            "-mx": False,
+                            "-ns": False,
+                            }
+        address_set = False
+        server_IP_address = ""
+        domain_name = ""
 
+        i = 1
+        while i < len(sys.argv):
+            if sys.argv[i] in switches:
+                key = sys.argv[i]
+                if (sys.argv[i] == "-mx" or sys.argv[i] == "-ns"):
+                    if not address_set:
+                        switches_values_dict[key] = True
+                        address_set = True
+                    else:
+                        raise ValueError(output_error_msg("3", "Cannot have -mx and -ns"))
+                else:
+                    i_temp = i + 1
+                    key = sys.argv[i]
+                    value = sys.argv[i_temp]
+                    switches_values_dict[key] = value
+                    i = i + 1
+            else:
+                if "@" in sys.argv[i]:
+                    server_IP_address = sys.argv[i].lstrip("@")
+                    try:
+                        domain_name = sys.argv[i+1]
+                        i = i + 1
+                    except Exception:
+                        raise ValueError(output_error_msg("5", "Domain Name"))
+                else: 
+                    raise ValueError(output_error_msg("4", sys.argv[i]))
+            i = i + 1
 
-    # DNS Questions Preparation
-    if switches_values_dict["-mx"]: q_type = "000f"
-    elif switches_values_dict["-ns"]: q_type = "0002"
-    else: q_type = "0001"
-
-    q_class = "0001" # Default
-    q_name = ""
-
-    ## Parsing of the qname
-    domain_name_sliced = domain_name.split(".")
-    for slice in domain_name_sliced:
-        length = len(slice)
-        slice_length = format(hex((length))).lstrip("0x")
-        if len(slice_length) == 1: 
-            slice_length = "0" + slice_length
-
-        q_name += slice_length
-        for char in slice:
-            char_hex_value = format(hex(ord(char))).lstrip("0x")
-            q_name += char_hex_value
-
-    q_name += "00"
-
-    ## DNS Questions parsed
-    dns_question = q_name + q_type + q_class
-
-    # Header Preparation
-    dns_header = ""
-
-    id = hex(random.getrandbits(16)).strip("0x").zfill(4)
-    flags = '0100'
-    qdcount = '0001' 
-    ancount = '0000' 
-    nscount = '0000' 
-    arcount = '0000' 
-
-    dns_header = id + flags + qdcount + ancount + nscount + arcount
-    dns_packet =  dns_header + dns_question
-    dns_packet_bytes = bytes.fromhex(dns_packet)
-
-    # UDP Client 
-    server_Port = int(switches_values_dict["-p"])
-    bytes_to_send = dns_packet_bytes
-    server_Address_Port = (server_IP_address,server_Port)
-    udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
-    udp_carl.settimeout(int(switches_values_dict["-t"]))
-    bufferSize = 1024
-
-    ## Send to server using created UDP 
-    retries = 0
-    while retries <= int(switches_values_dict["-r"]):
+        # Checks
+        if server_IP_address == "": raise ValueError(output_error_msg("5", "IP Address"))
         try:
-            start = time.time()
-            udp_carl.sendto(bytes_to_send, server_Address_Port)
+            int(switches_values_dict["-t"])
+            int(switches_values_dict["-p"])
+            int(switches_values_dict["-r"])
+        except Exception:
+            raise ValueError(output_error_msg("3", "Wrong type for -t -p or -r"))
+
+        # DNS Questions Preparation
+        if switches_values_dict["-mx"]: q_type = "000f"
+        elif switches_values_dict["-ns"]: q_type = "0002"
+        else: q_type = "0001"
+
+        q_class = "0001" # Default
+        q_name = ""
+
+        # Parsing of the q_name
+        domain_name_sliced = domain_name.split(".")
+        for slice in domain_name_sliced:
+            length = len(slice)
+            slice_length = format(hex((length))).lstrip("0x")
+            if len(slice_length) == 1: 
+                slice_length = "0" + slice_length
+
+            q_name += slice_length
+            for char in slice:
+                char_hex_value = format(hex(ord(char))).lstrip("0x")
+                q_name += char_hex_value
+
+        q_name += "00"
+
+        # DNS Questions parsed
+        dns_question = q_name + q_type + q_class
+
+        # Header Preparation
+        dns_header = ""
+
+        id = hex(random.getrandbits(16)).strip("0x").zfill(4)
+        flags = '0100'
+        qdcount = '0001' 
+        ancount = '0000' 
+        nscount = '0000' 
+        arcount = '0000' 
+
+        dns_header = id + flags + qdcount + ancount + nscount + arcount
+        dns_packet =  dns_header + dns_question
+        dns_packet_bytes = bytes.fromhex(dns_packet)
+
+        # UDP Client 
+        server_Port = int(switches_values_dict["-p"])
+        bytes_to_send = dns_packet_bytes
+        server_Address_Port = (server_IP_address,server_Port)
+        udp_carl = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        udp_carl.settimeout(int(switches_values_dict["-t"]))
+        bufferSize = 1024
+
+        # Send to server using created UDP 
+        retries = 0
+        while retries <= int(switches_values_dict["-r"]):
             try:
-                msgFromServer = udp_carl.recvfrom(bufferSize)
-            except socket.timeout:
-                raise ValueError(output_error_msg("1"))
-            end = time.time()
- 
-            msg = msgFromServer[0]
-            msg_hex = msg.hex()
-            msg_bin = format(int(msg_hex, 16), '0>16b')
-            
-            # Parsing the response packet
-            # Initialising dict to keep track of header values for OUTPUT
-            head_response_flags_keys = ["ID", "QR", "OPCODE", "AA", "TC", "RD", "RA", "Z", 
-                                "RCODE", "QDCOUNT", "ANCOUNT", "NSCOUNT", "ARCOUNT"]
-            initial_values = [""]*len(head_response_flags_keys)
-            header_response_flags_dict = dict(zip(head_response_flags_keys, initial_values))
+                start = time.time()
+                udp_carl.sendto(bytes_to_send, server_Address_Port)
+                try:
+                    msg_from_server = udp_carl.recvfrom(bufferSize)
+                except socket.timeout:
+                    raise ValueError(output_error_msg("1"))
+                end = time.time()
+    
+                msg = msg_from_server[0]
+                msg_hex = msg.hex()
+                msg_bin = format(int(msg_hex, 16), '0>16b')
+                
+                # Parsing the response packet
+                # Initialising dict to keep track of header values for OUTPUT
+                head_response_flags_keys = ["ID", "QR", "OPCODE", "AA", "TC", "RD", "RA", "Z", 
+                                    "RCODE", "QDCOUNT", "ANCOUNT", "NSCOUNT", "ARCOUNT"]
+                initial_values = [""]*len(head_response_flags_keys)
+                header_response_flags_dict = dict(zip(head_response_flags_keys, initial_values))
 
-            ## Decoding the header response
-            header_response_rows = re.findall('.'*4, msg_hex[:24])
-            flags_values = bin(int(header_response_rows[1], 16)).lstrip("0b")
+                ## Decoding the header response
+                header_response_rows = re.findall('.'*4, msg_hex[:24])
+                flags_values = bin(int(header_response_rows[1], 16)).lstrip("0b")
 
-            header_response_flags_dict["ID"] = header_response_rows[0]
+                header_response_flags_dict["ID"] = header_response_rows[0]
 
-            header_response_flags_dict["QR"] = flags_values[0]
-            header_response_flags_dict["OPCODE"] = flags_values[1:5]
-            header_response_flags_dict["AA"] = flags_values[5]
-            header_response_flags_dict["TC"] = flags_values[6]
-            header_response_flags_dict["RD"] = flags_values[7]
-            header_response_flags_dict["RA"] = flags_values[8]
-            header_response_flags_dict["Z"] = flags_values[9:12]
+                header_response_flags_dict["QR"] = flags_values[0]
+                header_response_flags_dict["OPCODE"] = flags_values[1:5]
+                header_response_flags_dict["AA"] = flags_values[5]
+                header_response_flags_dict["TC"] = flags_values[6]
+                header_response_flags_dict["RD"] = flags_values[7]
+                header_response_flags_dict["RA"] = flags_values[8]
+                header_response_flags_dict["Z"] = flags_values[9:12]
 
-            header_response_flags_dict["RCODE"] = flags_values[12:16]
-            header_response_flags_dict["QDCOUNT"] = header_response_rows[2]
-            header_response_flags_dict["ANCOUNT"] = header_response_rows[3]
-            header_response_flags_dict["NSCOUNT"] = header_response_rows[4]
-            header_response_flags_dict["ARCOUNT"] = header_response_rows[5]
+                header_response_flags_dict["RCODE"] = flags_values[12:16]
+                header_response_flags_dict["QDCOUNT"] = header_response_rows[2]
+                header_response_flags_dict["ANCOUNT"] = header_response_rows[3]
+                header_response_flags_dict["NSCOUNT"] = header_response_rows[4]
+                header_response_flags_dict["ARCOUNT"] = header_response_rows[5]
 
-            msg_bytes = bytearray(msg)
-            answer_in_bytes = msg_bytes[len(dns_packet_bytes):]
+                if header_response_flags_dict["RCODE"] != "0000": 
+                    raise ValueError(output_error_msg("6"))
 
-            records_dict = {}
-            record_dict_keys = ["Name", "Type", "TTL", "Data", "Section"]
+                msg_bytes = bytearray(msg)
+                answer_in_bytes = msg_bytes[len(dns_packet_bytes):]
 
-            parse_domain_name()
-            output_message()
-            break
-        except Exception as e:
-            retries += 1
+                records_dict = {}
+                record_dict_keys = ["Name", "Type", "TTL", "Data", "Section"]
 
-    if retries > int(switches_values_dict["-r"]): 
-        raise ValueError(output_error_msg("2", switches_values_dict["-r"]))
-except Exception as e:
-    print(e)
+                parse_records()
+                output_message()
+                break
+            except Exception as e:
+                retries += 1
+
+        if retries > int(switches_values_dict["-r"]): 
+            raise ValueError(output_error_msg("2", switches_values_dict["-r"]))
+    except Exception as e:
+        print(e)
 
     
     
