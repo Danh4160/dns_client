@@ -56,7 +56,7 @@ def parse_records():
             r_data = retrieve_domain_name(r_data, 0, "")[:-1]
 
         elif r_type.hex() == "000f":
-            pref = r_data[0:2]
+            pref = int.from_bytes(r_data[0:2], 'big')
             exchange = retrieve_domain_name(r_data[2:], 0, "")[:-1]
             r_data = [pref, exchange]
 
