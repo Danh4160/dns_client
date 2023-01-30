@@ -13,7 +13,7 @@ def retrieve_domain_name(l, index, name):
             index = l[index + 1]
             return retrieve_domain_name(msg_bytes, index, name)
         else:
-            if l[index] < 32:
+            if l[index] < 48:
                 segment_length = l[index]
                 segment = l[index + 1: index + 1 + segment_length]
                 segment = [chr(byte) for byte in segment]
@@ -28,7 +28,6 @@ def parse_records():
     returned_r_names = []
     record_num = 0
     i = 0
-
     while i < len(answer_in_bytes):
         if answer_in_bytes[i] == 192:
             index = answer_in_bytes[i+1]
@@ -248,7 +247,7 @@ if __name__ == "__main__":
                 except socket.timeout:
                     raise ValueError(output_error_msg("1"))
                 end = time.time()
-    
+
                 msg = msg_from_server[0]
                 msg_hex = msg.hex()
                 msg_bin = format(int(msg_hex, 16), '0>16b')
